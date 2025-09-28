@@ -4,17 +4,18 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
 import plotly.express as px
-
+import numpy as np
 
 # -------------------------------
 # Load Data
 # -------------------------------
-dataset_path = "data/marketing_campaign_dataset.csv"  # Make sure CSV is in same folder
+dataset_path = "data/marketing_campaign_dataset.csv"  # CSV inside data/ folder
 df = pd.read_csv(dataset_path)
 
-# Clean numeric columns
+# -------------------------------
+# Clean and Process Data
+# -------------------------------
 df['Acquisition_Cost'] = df['Acquisition_Cost'].str.replace('[\$,]', '', regex=True).astype(float)
 df['ROI'] = df['ROI'].astype(float)
 df['Conversion_Rate'] = df['Conversion_Rate'].astype(float)
@@ -22,7 +23,7 @@ df['Clicks'] = df['Clicks'].astype(int)
 df['Impressions'] = df['Impressions'].astype(int)
 df['Engagement_Score'] = df['Engagement_Score'].astype(int)
 
-# Calculated metrics
+# Calculated Metrics
 df['Engagement_per_Cost'] = df['Engagement_Score'] / df['Acquisition_Cost']
 df['Conversions_per_Cost'] = (df['Conversion_Rate'] * df['Impressions']) / df['Acquisition_Cost']
 
@@ -34,16 +35,41 @@ df['Year'] = df['Date'].dt.year
 # Sidebar Filters
 # -------------------------------
 st.sidebar.header("Filters")
-companies = st.sidebar.multiselect("Select Companies", df['Company'].unique(), default=df['Company'].unique())
-campaign_types = st.sidebar.multiselect("Select Campaign Types", df['Campaign_Type'].unique(), default=df['Campaign_Type'].unique())
-years = st.sidebar.multiselect("Select Year(s)", df['Year'].unique(), default=df['Year'].unique())
 
-# Apply filters
-filtered_df = df[
-    (df['Company'].isin(companies)) &
-    (df['Campaign_Type'].isin(campaign_types)) &
-    (df['Year'].isin(years))
-]
+# Campaign Type filter first
+campaign_types = st.sidebar.multiselect(
+    "Select Campaign Type(s)",
+    options=df['Campaign_Type'].unique(),
+    default=[]
+)
+
+# Filter companies based on selected campaign types
+if campaign_types:
+    companies_filtered = df[df['Campaign_Type'].isin(campaign_types)]['Company'].unique()
+else:
+    companies_filtered = df['Company'].unique()
+
+companies = st.sidebar.multiselect(
+    "Select Company(s)",
+    options=companies_filtered,
+    default=[]
+)
+
+# Year filter
+years = st.sidebar.multiselect(
+    "Select Year(s)",
+    options=df['Year'].unique(),
+    default=[]
+)
+
+# Apply Filters
+filtered_df = df.copy()
+if campaign_types:
+    filtered_df = filtered_df[filtered_df['Campaign_Type'].isin(campaign_types)]
+if companies:
+    filtered_df = filtered_df[filtered_df['Company'].isin(companies)]
+if years:
+    filtered_df = filtered_df[filtered_df['Year'].isin(years)]
 
 # -------------------------------
 # Dashboard Title
@@ -69,7 +95,7 @@ col4.metric("Conversions per $", f"{avg_conversion_eff:.2f}")
 # -------------------------------
 st.subheader("Top 10 Campaigns by ROI")
 top10 = filtered_df.sort_values(by='ROI', ascending=False).head(10)
-st.dataframe(top10[['Campaign_ID', 'Company', 'ROI', 'Acquisition_Cost', 'Engagement_per_Cost', 'Conversions_per_Cost']])
+st.dataframe(top10[['Campaign_ID', 'Company', 'Campaign_Type', 'ROI', 'Acquisition_Cost', 'Engagement_per_Cost', 'Conversions_per_Cost']])
 
 # -------------------------------
 # ROI Bar Chart
@@ -107,8 +133,6 @@ plt.ylabel("Conversions per $")
 plt.tight_layout()
 st.pyplot(plt)
 
-
-
 # -------------------------------
 # Monthly ROI Trend
 # -------------------------------
@@ -133,7 +157,6 @@ fig_budget_engage = px.line(monthly_metrics, x='Month', y=['Acquisition_Cost', '
 fig_budget_engage.update_layout(xaxis_title="Month", yaxis_title="Values")
 st.plotly_chart(fig_budget_engage, use_container_width=True)
 
-
 # -------------------------------
 # Download Filtered Data
 # -------------------------------
@@ -143,5 +166,3 @@ st.download_button(
     file_name='filtered_campaign_data.csv',
     mime='text/csv'
 )
-
-
