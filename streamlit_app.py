@@ -11,7 +11,7 @@ import plotly.express as px
 # -------------------------------
 # Load Data
 # -------------------------------
-dataset_path = "marketing_campaign_dataset.csv"  # Make sure CSV is in same folder
+dataset_path = "data/marketing_campaign_dataset.csv"  # Make sure CSV is in same folder
 df = pd.read_csv(dataset_path)
 
 # Clean numeric columns
